@@ -56,14 +56,20 @@ For a public API, set `API_KEY` as a secret environment variable. Prediction req
 
 ## Deploy the API on Render
 
-The included `render.yaml` selects `Dockerfile.api`, sets the health check to `/api/v1/health`, and asks you for an `API_KEY` in the Render Dashboard. It selects Render's **paid 2 GB web service plan** (`1c-2g`): the model container used about 589 MiB while idle locally, which already exceeds the 512 MB Free plan. Review Render's current price before creating the service.
+The included `render.yaml` uses Render's **Free** web service plan, `Dockerfile.free`, and `/api/v1/health`. The original TensorFlow container exceeded Free's 512 MB memory limit when measured locally, so this deployment runs an approximately 80 MB float16 LiteRT copy of the same model. The Free container does not include TensorFlow or the website. It serves the JSON API at `/`, `/api/v1`, `/api/v1/health`, and `/api/v1/predict`. Class scores keep the same response shape, but `include_visuals=true` returns a 400 error because LayerCAM needs TensorFlow gradients.
 
-1. Commit and push `app.py`, `Dockerfile.api`, `render.yaml`, `README.md`, and `tests/test_api.py` to the GitHub repository. The model is tracked with Git LFS; verify that GitHub has the real `model3.h5` object.
-2. In the Render Dashboard, connect your GitHub account, choose **New → Blueprint**, select this repository and its `main` branch, then review the proposed `sonolab-api` web service and paid plan.
-3. Enter a long random value for `API_KEY` when Render prompts you, then approve creation. Do not put the key in Git.
-4. Wait for the deploy to become healthy. Visit `https://<your-service>.onrender.com/api/v1/health`, then send a PNG/JPEG to `https://<your-service>.onrender.com/api/v1/predict` with multipart field `image` and header `X-API-Key`.
+Commit `model_free.tflite` as a regular Git file so Render receives the actual model without depending on Git LFS during its build. The original `model3.h5` remains in Git LFS for the full website/API container. To regenerate and check the smaller model locally, run `python convert_model_free.py` and `python verify_model_free.py` in an environment with TensorFlow installed. The conversion check compares the two models on 10 deterministic inputs; it is not a clinical accuracy test.
 
-If the build reports that `model3.h5` is missing or cannot be opened, check that Render's Git checkout obtained the 483 MB Git LFS object rather than its small pointer file. The API is a research demo and is not a medical diagnostic service.
+1. Commit and push the changes in this folder, including `model_free.tflite`, to your GitHub repository. The converted model is about 80 MB, so expect a large Git push.
+2. Sign in to [Render](https://dashboard.render.com/), connect your GitHub account, choose **New → Blueprint**, and select this repository's `main` branch.
+3. Check that the proposed `sonolab-api` service says **Free** and uses `Dockerfile.free`. Add a long random `API_KEY` when prompted, then create the service. Keep that key out of Git.
+4. After deployment, open `https://<your-service>.onrender.com/api/v1/health`. To predict, send a PNG or JPEG as the multipart field `image` and include `X-API-Key`:
+
+   ```sh
+   curl -H "X-API-Key: YOUR_KEY" -F "image=@sample.png" https://<your-service>.onrender.com/api/v1/predict
+   ```
+
+Free instances have 0.1 CPU and 512 MB RAM, spin down after 15 minutes idle, and may take about a minute to wake. Predictions can therefore be slow. This is a research demo and is not a medical diagnostic service.
 
 ## Deployment
 

@@ -1,0 +1,5 @@
+Flask>=3.0,<4
+numpy>=1.26,<3
+Pillow>=10,<13
+ai-edge-litert==2.2.0
+waitress>=3.0,<4

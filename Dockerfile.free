@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
+
+WORKDIR /app
+
+COPY requirements.free.txt ./
+RUN pip install --no-cache-dir -r requirements.free.txt
+
+RUN useradd --uid 10001 --create-home appuser
+COPY --chown=appuser:appuser app.py serve_free.py model_free.tflite ./
+
+USER appuser
+EXPOSE 8000
+CMD ["python", "serve_free.py"]
