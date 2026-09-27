@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 from flask import Flask, jsonify, render_template, request
 from PIL import Image, ImageFilter, UnidentifiedImageError
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -233,6 +233,10 @@ def api_predict():
 
     try:
         batch, preview = prepare_image(upload)
+    except ValueError as exc:
+        return api_error("invalid_image", str(exc), 400)
+
+    try:
         probabilities, focus = predict_scores(batch, include_focus=include_visuals)
         best_index = int(np.argmax(probabilities))
         response = {
@@ -259,8 +263,6 @@ def api_predict():
                 "notice": "The contour shows model influence, not a lesion boundary.",
             }
         return jsonify(response)
-    except ValueError as exc:
-        return api_error("invalid_image", str(exc), 400)
     except FileNotFoundError:
         app.logger.exception("Model file is missing")
         return api_error("model_unavailable", "The model is unavailable.", 503)
@@ -330,6 +332,13 @@ def too_large(_error):
     if request.path.startswith("/api/"):
         return api_error("image_too_large", "The request must be smaller than 10 MB.", 413)
     return render_template("predict.html", page_name="predict", error="The image must be smaller than 10 MB."), 413
+
+
+@app.errorhandler(HTTPException)
+def http_error(error):
+    if request.path.startswith("/api/"):
+        return api_error(error.name.lower().replace(" ", "_"), error.description, error.code)
+    return error
 
 
 if __name__ == "__main__":

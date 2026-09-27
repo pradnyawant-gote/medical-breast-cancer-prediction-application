@@ -2,6 +2,7 @@
 
 import io
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 from PIL import Image
@@ -44,6 +45,18 @@ class ApiTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json["error"]["code"], "invalid_option")
+
+        response = self.client.get("/api/v1/predict")
+        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.json["error"]["code"], "method_not_allowed")
+
+    def test_inference_failure_is_not_reported_as_bad_image(self):
+        with patch("app.predict_scores", side_effect=ValueError("invalid model shape")):
+            response = self.client.post(
+                "/api/v1/predict", data={"image": (sample_png(), "scan.png")}
+            )
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json["error"]["code"], "prediction_failed")
 
     def test_oversized_request_returns_json(self):
         previous_limit = app.config["MAX_CONTENT_LENGTH"]
