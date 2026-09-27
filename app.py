@@ -3,11 +3,12 @@
 import base64
 import io
 import logging
+import os
 from functools import lru_cache
 from pathlib import Path
 
 import numpy as np
-from flask import Flask, render_template, request
+from flask import Flask, jsonify, render_template, request
 from PIL import Image, ImageFilter, UnidentifiedImageError
 from werkzeug.exceptions import RequestEntityTooLarge
 
@@ -22,6 +23,23 @@ Image.MAX_IMAGE_PIXELS = 20_000_000
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+ALLOWED_ORIGINS = {
+    origin.strip().rstrip("/")
+    for origin in os.environ.get("CORS_ORIGINS", "").split(",")
+    if origin.strip()
+}
+
+
+@app.after_request
+def add_api_cors(response):
+    """Allow only explicitly configured browser origins to call the JSON API."""
+    origin = request.headers.get("Origin", "").rstrip("/")
+    if request.path.startswith("/api/") and origin in ALLOWED_ORIGINS:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers.add("Vary", "Origin")
+    return response
 
 
 @lru_cache(maxsize=1)
@@ -173,6 +191,84 @@ def analysis_images(preview, focus, show_region):
     }
 
 
+def predict_scores(batch, include_focus=False):
+    """Run the shared classifier and validate its three output probabilities."""
+    if include_focus:
+        scores, focus = classify_with_focus(batch)
+    else:
+        scores = np.asarray(get_model().predict(batch, verbose=0))
+        focus = None
+    if scores.shape != (1, len(CLASS_NAMES)) or not np.all(np.isfinite(scores)):
+        raise RuntimeError("The model returned an invalid prediction")
+    probabilities = scores[0]
+    if np.any(probabilities < 0) or not np.isclose(probabilities.sum(), 1, atol=0.01):
+        raise RuntimeError("The model returned invalid class probabilities")
+    return probabilities, focus
+
+
+def api_error(code, message, status):
+    return jsonify({"error": {"code": code, "message": message}}), status
+
+
+@app.get("/api/v1/health")
+def api_health():
+    """Lightweight check for hosting health probes; it does not load the model."""
+    if not MODEL_PATH.is_file():
+        return api_error("model_unavailable", "The model file is missing.", 503)
+    return jsonify({"status": "ok", "model": MODEL_PATH.name})
+
+
+@app.post("/api/v1/predict")
+def api_predict():
+    """Predict from a multipart PNG/JPEG field named `image`."""
+    if request.mimetype != "multipart/form-data":
+        return api_error("unsupported_media_type", "Send multipart/form-data with an image field.", 415)
+    visuals_option = request.args.get("include_visuals", "false").lower()
+    if visuals_option not in {"true", "false", "1", "0"}:
+        return api_error("invalid_option", "include_visuals must be true or false.", 400)
+    include_visuals = visuals_option in {"true", "1"}
+    upload = request.files.get("image")
+    if upload is None or not upload.filename:
+        return api_error("missing_image", "Add a PNG or JPEG file in the image field.", 400)
+
+    try:
+        batch, preview = prepare_image(upload)
+        probabilities, focus = predict_scores(batch, include_focus=include_visuals)
+        best_index = int(np.argmax(probabilities))
+        response = {
+            "model": MODEL_PATH.name,
+            "predicted_class": CLASS_NAMES[best_index].lower(),
+            "scores": {
+                name.lower(): round(float(value), 6)
+                for name, value in zip(CLASS_NAMES, probabilities)
+            },
+            "input_size": {"width": IMAGE_SIZE[0], "height": IMAGE_SIZE[1]},
+            "notice": "Research use only. This is not a medical diagnosis.",
+        }
+        if include_visuals:
+            visuals = analysis_images(preview, focus, show_region=best_index != 2)
+            response["visuals"] = {
+                "method": "LayerCAM",
+                "focus_resolution": visuals["focus_resolution"],
+                "edge_png_data_url": visuals["edges"],
+                "focus_png_data_url": visuals["focus"],
+                "contour_png_data_url": visuals["region"],
+                "contour_reason": visuals["region_reason"] or (
+                    "No contour is shown for a normal prediction." if best_index == 2 else None
+                ),
+                "notice": "The contour shows model influence, not a lesion boundary.",
+            }
+        return jsonify(response)
+    except ValueError as exc:
+        return api_error("invalid_image", str(exc), 400)
+    except FileNotFoundError:
+        app.logger.exception("Model file is missing")
+        return api_error("model_unavailable", "The model is unavailable.", 503)
+    except Exception:
+        app.logger.exception("API prediction failed")
+        return api_error("prediction_failed", "The model could not process this image.", 500)
+
+
 @app.route("/")
 def home():
     return render_template("index.html", page_name="home")
@@ -209,12 +305,7 @@ def predict():
 
     try:
         batch, preview = prepare_image(upload)
-        scores, focus = classify_with_focus(batch)
-        if scores.shape != (1, len(CLASS_NAMES)) or not np.all(np.isfinite(scores)):
-            raise RuntimeError("The model returned an invalid prediction")
-        probabilities = scores[0]
-        if np.any(probabilities < 0) or not np.isclose(probabilities.sum(), 1, atol=0.01):
-            raise RuntimeError("The model returned invalid class probabilities")
+        probabilities, focus = predict_scores(batch, include_focus=True)
         results = [
             {"name": name, "percent": round(float(probability) * 100, 1)}
             for name, probability in zip(CLASS_NAMES, probabilities)
@@ -236,6 +327,8 @@ def predict():
 
 @app.errorhandler(RequestEntityTooLarge)
 def too_large(_error):
+    if request.path.startswith("/api/"):
+        return api_error("image_too_large", "The request must be smaller than 10 MB.", 413)
     return render_template("predict.html", page_name="predict", error="The image must be smaller than 10 MB."), 413
 
 
