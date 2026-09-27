@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Predict | SonoLab{% endblock %}
+
+{% block content %}
+<section class="predict-shell" aria-labelledby="prediction-title">
+  <div class="page-kicker"><span>05</span> / PREDICTION WORKSPACE</div>
+  <div class="prediction-top"><div><h1 id="prediction-title">Run a <em>prediction.</em></h1><p>Upload a breast ultrasound image, then review the model's three class scores alongside the image you selected.</p></div><div class="model-chip"><span class="signal-dot"></span> MODEL3.H5 <span>·</span> 3 CLASSES</div></div>
+
+  <div class="workspace-grid">
+    <section class="workspace-panel upload-panel" aria-labelledby="upload-title">
+      <div class="panel-heading"><span>01 / INPUT</span><h2 id="upload-title">Your image</h2><p>{% if result %}This image was used for the current result.{% else %}Choose a clear PNG or JPEG ultrasound image.{% endif %}</p></div>
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+      <form method="post" action="{{ url_for('predict') }}" enctype="multipart/form-data" id="upload-form">
+        <label class="drop-zone{% if result %} has-image{% endif %}" id="drop-zone" for="image-input">
+          <input id="image-input" name="image" type="file" accept="image/png,image/jpeg" required>
+          <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16.5v2.25A1.25 1.25 0 0 0 5.25 20h13.5A1.25 1.25 0 0 0 20 18.75V16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <img id="selected-preview" alt="Selected ultrasound image preview"{% if result %} src="{{ preview_url }}"{% else %} hidden{% endif %}>
+          <span class="drop-title" id="drop-title">{% if result %}Image analyzed{% else %}Select an image or drop it here{% endif %}</span>
+          <span class="drop-detail" id="drop-detail">{% if result %}Click to choose another image{% else %}PNG or JPEG · Maximum 10 MB{% endif %}</span>
+        </label>
+        <button class="orange-button predict-button" type="submit" id="submit-button"{% if result %} disabled{% endif %}><span>{% if result %}Select another image{% else %}Analyze image{% endif %}</span><span aria-hidden="true">↗</span></button>
+      </form>
+      <p class="privacy-note">The website does not keep your uploaded image after the request.</p>
+    </section>
+
+    <section class="workspace-panel result-panel" aria-labelledby="result-title">
+      <div class="panel-heading"><span>02 / OUTPUT</span><h2 id="result-title">Model result</h2><p>The highest scoring class and every model score appear here.</p></div>
+      {% if result %}
+      <div class="result-content" aria-live="polite">
+        <div class="result-summary result-{{ result.name|lower }}"><span>PREDICTED CLASS</span><strong>{{ result.name }}</strong><small>{{ result.percent }}% model score</small></div>
+        <div class="score-list" aria-label="Scores by class">{% for item in results %}<div class="score-item"><div class="score-row"><span>{{ item.name }}</span><strong>{{ item.percent }}%</strong></div><div class="score-track"><span class="score-fill score-{{ item.name|lower }}" style="width: {{ item.percent }}%"></span></div></div>{% endfor %}</div>
+        <p class="score-note">Model scores are not a measure of clinical certainty.</p>
+      </div>
+      {% else %}
+      <div class="empty-state"><div class="empty-orbit" aria-hidden="true"><span>✦</span></div><strong>Awaiting an image</strong><p>Upload an ultrasound image to see the classification here.</p></div>
+      {% endif %}
+    </section>
+  </div>
+  {% if result %}
+  <section class="analysis-section" aria-labelledby="analysis-title">
+    <div class="analysis-heading">
+      <div><span>03 / IMAGE ANALYSIS</span><h2 id="analysis-title">Explore the image</h2></div>
+      <p>Compare image structure with the areas that influenced the <strong>{{ result.name|lower }}</strong> classification.</p>
+    </div>
+    <div class="analysis-grid">
+      <article class="analysis-card">
+        <div class="analysis-card-top"><span>01</span><h3>Edge detection</h3></div>
+        <div class="analysis-image"><img src="{{ visuals.edges }}" alt="Sobel edge map of the uploaded ultrasound image"></div>
+        <p>Sobel filtering highlights strong changes in image brightness and texture.</p>
+      </article>
+      <article class="analysis-card">
+        <div class="analysis-card-top"><span>02</span><h3>Model focus</h3></div>
+        <div class="analysis-image"><img src="{{ visuals.focus }}" alt="LayerCAM view of the uploaded image{% if visuals.focus_available %} with orange areas influential to the {{ result.name|lower }} model score{% endif %}"></div>
+        <p>{% if visuals.focus_available %}Orange shows relative influence on the predicted class. It does not show cancer probability at each pixel.{% else %}No positive class focus appeared in this image's LayerCAM map.{% endif %}</p>
+      </article>
+      <article class="analysis-card">
+        <div class="analysis-card-top"><span>03</span><h3>Focus contour</h3></div>
+        {% if visuals.region %}
+        <div class="analysis-image"><img src="{{ visuals.region }}" alt="High-influence model focus area outlined over the uploaded ultrasound image"></div>
+        <p>The outline surrounds stronger model influence. It is not a lesion boundary.</p>
+        {% else %}
+        <div class="analysis-image analysis-image-empty"><span aria-hidden="true">○</span><strong>No contour displayed</strong><small>{% if result.name == "Normal" %}The model scored this image highest as normal.{% else %}{{ visuals.region_reason }}{% endif %}</small></div>
+        <p>A missing highlight does not rule out an abnormality.</p>
+        {% endif %}
+      </article>
+    </div>
+    <div class="focus-key" aria-label="Model focus color key"><span>Relative model influence</span><i aria-hidden="true"></i><span>Low</span><span>High</span></div>
+    <p class="analysis-note"><strong>How to read these views:</strong> Focus is calculated on a {{ visuals.focus_resolution }} feature map and enlarged to fit the image. This classifier labels whole images; it was not trained to segment lesions. The contour may include artifacts or unrelated tissue.</p>
+  </section>
+  {% endif %}
+  <aside class="disclaimer" aria-label="Important medical notice"><span aria-hidden="true">!</span><p><strong>Research use only.</strong> This is not a medical diagnosis. The model can be wrong. A qualified healthcare professional should review medical images and advise on next steps.</p></aside>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='app.js') }}" defer></script>{% endblock %}

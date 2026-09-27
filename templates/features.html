@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Features | SonoLab{% endblock %}
+{% block content %}
+<section class="interior-hero compact"><div class="page-kicker"><span>02</span> / FEATURES</div><h1>Designed around<br><em>the essentials.</em></h1><p class="interior-lead">The features are purpose built for exploring this model's output without hiding the steps that produced it.</p></section>
+<section class="feature-matrix" aria-label="SonoLab features">
+  <article><span class="feature-index">01 / INPUT</span><div class="feature-glyph" aria-hidden="true">↥</div><h2>Simple image upload</h2><p>Choose or drop a PNG or JPEG image. The page shows a preview before submission and keeps it beside the result.</p></article>
+  <article><span class="feature-index">02 / PREPARATION</span><div class="feature-glyph" aria-hidden="true">⌗</div><h2>Consistent preprocessing</h2><p>RGB conversion, 128 × 128 resizing, and pixel scaling mirror the notebook's evaluation pipeline.</p></article>
+  <article><span class="feature-index">03 / OUTPUT</span><div class="feature-glyph" aria-hidden="true">▥</div><h2>Three class view</h2><p>See the highest scoring class and a bar for each of the benign, malignant, and normal outputs.</p></article>
+  <article><span class="feature-index">04 / GUARDRAILS</span><div class="feature-glyph" aria-hidden="true">◇</div><h2>Clear limits</h2><p>Invalid or oversized files receive a clear message. Medical notices keep the model's role in context.</p></article>
+</section>
+<section class="page-cta"><div><span class="eyebrow-row"><span class="mini-orange-square"></span> YOUR NEXT STEP</span><h2>See these features in action.</h2><p>The prediction workspace brings the image and scores together.</p></div><a class="orange-button" href="{{ url_for('predict') }}">Try prediction <span aria-hidden="true">↗</span></a></section>
+{% endblock %}

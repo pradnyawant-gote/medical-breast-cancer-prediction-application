@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}SonoLab | Breast ultrasound classification{% endblock %}
+
+{% block content %}
+<section class="home-hero" aria-labelledby="hero-title">
+  <div class="hero-type" id="hero-title"><span>BREAST ULTRASOUND</span><span>CLASSIFICATION</span></div>
+  <div class="hero-machine hero-art"><img src="{{ url_for('static', filename='images/hero-cell-network.jpg') }}" alt="Illustration of breast cells passing through a neural network into two cell groups"></div>
+  <div class="hero-left">
+    <span class="round-symbol" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M4 16h6l3-7 6 14 3-7h6" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+    <p>Explore how a trained model classifies breast ultrasound images—one scan, three class scores, and a clearer view of the output.</p>
+    <a class="text-link" href="{{ url_for('product') }}">Explore the product <span aria-hidden="true">↗</span></a>
+  </div>
+  <div class="hero-right">
+    <div class="orbital-badge" aria-hidden="true"><span class="orbital-core">✦</span><span class="orbital-ring"></span></div>
+    <p>Upload an image to see the model's prediction and review every category score.</p>
+    <a class="orange-button" href="{{ url_for('predict') }}">Get started <span aria-hidden="true">↗</span></a>
+  </div>
+  <div class="hero-caption"><span>FLASK × TENSORFLOW</span><span class="caption-rule"></span><span>MODEL3.H5</span></div>
+</section>
+
+<section class="home-lower" aria-labelledby="home-lower-title">
+  <div class="eyebrow-row"><span class="mini-orange-square"></span> THE WORKFLOW</div>
+  <div class="home-lower-grid"><div><h2 id="home-lower-title">A direct route<br>from image to output.</h2><p>Built around the supplied breast ultrasound model, SonoLab makes the image preparation and classification steps easy to follow.</p></div><div class="home-step-list"><div><b>01</b><span>Upload a PNG or JPEG ultrasound image</span></div><div><b>02</b><span>Prepare it for the model's 128 × 128 RGB input</span></div><div><b>03</b><span>Review benign, malignant, and normal scores</span></div><a href="{{ url_for('features') }}">See all features <span aria-hidden="true">↗</span></a></div></div>
+</section>
+{% endblock %}

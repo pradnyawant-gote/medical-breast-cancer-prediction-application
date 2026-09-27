@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#030615">
+  <meta name="description" content="Explore a breast ultrasound image classification model built with Flask and TensorFlow.">
+  <title>{% block title %}SonoLab{% endblock %}</title>
+  <script>try{if(localStorage.getItem('sonolab-theme')==='light'){document.documentElement.dataset.theme='light';document.querySelector('meta[name="theme-color"]').content='#edf1f7'}}catch(error){}</script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="page-{{ page_name }}">
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <div class="site-frame">
+    <header class="site-header">
+      <a class="brand" href="{{ url_for('home') }}" aria-label="SonoLab home"><span class="brand-dot">.</span>sono<span class="brand-light">lab</span></a>
+      <nav class="main-nav" aria-label="Main navigation">
+        <a href="{{ url_for('home') }}"{% if page_name == 'home' %} aria-current="page"{% endif %}>Home</a>
+        <a href="{{ url_for('product') }}"{% if page_name == 'product' %} aria-current="page"{% endif %}>Product</a>
+        <a href="{{ url_for('features') }}"{% if page_name == 'features' %} aria-current="page"{% endif %}>Features</a>
+        <a href="{{ url_for('service') }}"{% if page_name == 'service' %} aria-current="page"{% endif %}>Service</a>
+        <a href="{{ url_for('about') }}"{% if page_name == 'about' %} aria-current="page"{% endif %}>About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="false" title="Switch to light mode">
+          <svg class="sun-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="1.8"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <svg class="moon-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20.2 15.8A8.5 8.5 0 0 1 8.2 3.8 8.5 8.5 0 1 0 20.2 15.8Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+          <span id="theme-label">Light</span>
+        </button>
+        <a class="nav-outline" href="{{ url_for('product') }}">The model</a>
+        <a class="nav-primary" href="{{ url_for('predict') }}">Predict now <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main id="main-content">{% block content %}{% endblock %}</main>
+
+    <footer class="site-footer"><span>© SonoLab · Model exploration interface</span><span>Research demonstration only · Not a medical diagnosis</span></footer>
+  </div>
+  <script src="{{ url_for('static', filename='theme.js') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

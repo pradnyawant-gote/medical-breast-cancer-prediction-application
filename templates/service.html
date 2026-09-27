@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Service | SonoLab{% endblock %}
+{% block content %}
+<section class="interior-hero compact">
+  <div class="page-kicker"><span>03</span> / SERVICE</div>
+  <h1>From upload<br><em>to model output.</em></h1>
+  <p class="interior-lead">Follow the steps the Flask application runs when you analyze an image.</p>
+</section>
+
+<section class="pipeline-section" aria-labelledby="pipeline-title">
+  <div class="pipeline-head">
+    <div>
+      <span class="pipeline-kicker"><span class="signal-dot"></span> THE PREDICTION PIPELINE</span>
+      <h2 id="pipeline-title">One image. Four connected steps.</h2>
+    </div>
+    <p>Each stage hands its output to the next, from the image you choose to the scores shown on the result page.</p>
+  </div>
+
+  <ol class="pipeline-flow">
+    <li class="pipeline-card">
+      <div class="pipeline-card-top"><span>01 / INPUT</span><span class="pipeline-card-dot" aria-hidden="true"></span></div>
+      <div class="pipeline-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M7 22v3a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3M16 21V5m0 0-6 6m6-6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Upload</h3>
+      <p>Choose a PNG or JPEG ultrasound image under 10 MB.</p>
+      <div class="pipeline-handoff"><span>HANDOFF</span><strong>Image file</strong></div>
+    </li>
+    <li class="pipeline-card">
+      <div class="pipeline-card-top"><span>02 / PREPROCESS</span><span class="pipeline-card-dot" aria-hidden="true"></span></div>
+      <div class="pipeline-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><rect x="5" y="5" width="22" height="22" rx="3" stroke="currentColor" stroke-width="2"/><path d="M10 16h12M16 10v12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <h3>Prepare</h3>
+      <p>Convert to RGB, resize to 128 × 128, then scale pixel values to 0–1.</p>
+      <div class="pipeline-handoff"><span>HANDOFF</span><strong>128 × 128 RGB tensor</strong></div>
+    </li>
+    <li class="pipeline-card">
+      <div class="pipeline-card-top"><span>03 / INFERENCE</span><span class="pipeline-card-dot" aria-hidden="true"></span></div>
+      <div class="pipeline-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><circle cx="6" cy="16" r="2" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="8" r="2" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="24" r="2" stroke="currentColor" stroke-width="2"/><circle cx="26" cy="16" r="2" stroke="currentColor" stroke-width="2"/><path d="m8 15 6-6m-6 8 6 6m4-14 6 6m-6 8 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <h3>Classify</h3>
+      <p>Run <code>model3.h5</code> to calculate the three class scores.</p>
+      <div class="pipeline-handoff"><span>HANDOFF</span><strong>Three scores</strong></div>
+    </li>
+    <li class="pipeline-card">
+      <div class="pipeline-card-top"><span>04 / OUTPUT</span><span class="pipeline-card-dot" aria-hidden="true"></span></div>
+      <div class="pipeline-icon" aria-hidden="true"><svg viewBox="0 0 32 32" fill="none"><path d="M6 25h20M9 20v-7m7 7V7m7 13v-4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><path d="m7 6 3 3 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Review</h3>
+      <p>See the image preview, predicted class, and all three scores.</p>
+      <div class="pipeline-handoff"><span>RESULT</span><strong>Benign · Malignant · Normal</strong></div>
+    </li>
+  </ol>
+  <p class="pipeline-caption">The same four steps run when you submit an image on the <a href="{{ url_for('predict') }}">prediction page <span aria-hidden="true">↗</span></a>.</p>
+</section>
+
+<section class="service-note"><span class="note-icon" aria-hidden="true">i</span><div><h2>Use the result responsibly.</h2><p>This model is a research demonstration. Its scores are not a diagnosis or a measure of clinical certainty. A qualified healthcare professional should review medical images and advise on next steps.</p></div></section>
+<section class="page-cta"><div><span class="eyebrow-row"><span class="mini-orange-square"></span> BEGIN</span><h2>Ready to try the workflow?</h2><p>Open the prediction page to submit an image.</p></div><a class="orange-button" href="{{ url_for('predict') }}">Open prediction <span aria-hidden="true">↗</span></a></section>
+{% endblock %}
