@@ -45,11 +45,12 @@ By default browser calls from another origin are blocked. If the frontend is hos
 The included Dockerfile runs the Flask application with Waitress, a production WSGI server. The same `serve.py` entry point runs on Windows or Linux. It listens on the `PORT` environment variable (default 8000) and uses one process so the large model is loaded once.
 
 ```sh
+git lfs pull
 docker build -t sonolab .
 docker run --rm -p 8000:8000 sonolab
 ```
 
-Point your hosting platform at the Dockerfile, expose its assigned `PORT`, and use `/api/v1/health` as the health check. Ensure Git LFS has downloaded the real `model3.h5` before building; the file is about 483 MB, so the host also needs memory for TensorFlow and model inference. Serve the public deployment over HTTPS. The Flask development server in `app.py` is only for local development.
+On a VPS, replace the temporary `docker run` command with `docker run -d --name sonolab --restart unless-stopped -p 8000:8000 sonolab`, and put an HTTPS reverse proxy in front of it. For a container hosting platform, point it at the Dockerfile, expose its assigned `PORT`, and use `/api/v1/health` as the health check. Ensure Git LFS has downloaded the real `model3.h5` before building; the file is about 483 MB, so the host also needs memory for TensorFlow and model inference. The production entry point loads the model before accepting requests. The Flask development server in `app.py` is only for local development.
 
 ## Visual design
 
