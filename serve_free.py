@@ -1,4 +1,4 @@
-"""Small API-only server for Render's 512 MB Free instance."""
+"""Small website and API server for Render's 512 MB Free instance."""
 
 import os
 from functools import lru_cache
@@ -14,7 +14,8 @@ import app as webapp
 
 MODEL_PATH = Path(__file__).resolve().parent / "model_free.tflite"
 webapp.MODEL_PATH = MODEL_PATH
-webapp.API_ONLY = True
+webapp.API_ONLY = False
+webapp.LITE_MODE = True
 
 
 class LiteModel:

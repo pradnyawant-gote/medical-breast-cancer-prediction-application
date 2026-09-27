@@ -4,7 +4,7 @@
 {% block content %}
 <section class="predict-shell" aria-labelledby="prediction-title">
   <div class="page-kicker"><span>05</span> / PREDICTION WORKSPACE</div>
-  <div class="prediction-top"><div><h1 id="prediction-title">Run a <em>prediction.</em></h1><p>Upload a breast ultrasound image, then review the model's three class scores alongside the image you selected.</p></div><div class="model-chip"><span class="signal-dot"></span> MODEL3.H5 <span>·</span> 3 CLASSES</div></div>
+  <div class="prediction-top"><div><h1 id="prediction-title">Run a <em>prediction.</em></h1><p>Upload a breast ultrasound image, then review the model's three class scores alongside the image you selected.</p></div><div class="model-chip"><span class="signal-dot"></span> {% if lite_mode %}LITERT MODEL{% else %}MODEL3.H5{% endif %} <span>·</span> 3 CLASSES</div></div>
 
   <div class="workspace-grid">
     <section class="workspace-panel upload-panel" aria-labelledby="upload-title">
@@ -16,7 +16,7 @@
           <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 16.5v2.25A1.25 1.25 0 0 0 5.25 20h13.5A1.25 1.25 0 0 0 20 18.75V16.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
           <img id="selected-preview" alt="Selected ultrasound image preview"{% if result %} src="{{ preview_url }}"{% else %} hidden{% endif %}>
           <span class="drop-title" id="drop-title">{% if result %}Image analyzed{% else %}Select an image or drop it here{% endif %}</span>
-          <span class="drop-detail" id="drop-detail">{% if result %}Click to choose another image{% else %}PNG or JPEG · Maximum 10 MB{% endif %}</span>
+          <span class="drop-detail" id="drop-detail">{% if result %}Click to choose another image{% else %}PNG or JPEG · Maximum 10 MB{% if lite_mode %} · 8 MP{% endif %}{% endif %}</span>
         </label>
         <button class="orange-button predict-button" type="submit" id="submit-button"{% if result %} disabled{% endif %}><span>{% if result %}Select another image{% else %}Analyze image{% endif %}</span><span aria-hidden="true">↗</span></button>
       </form>
@@ -40,8 +40,9 @@
   <section class="analysis-section" aria-labelledby="analysis-title">
     <div class="analysis-heading">
       <div><span>03 / IMAGE ANALYSIS</span><h2 id="analysis-title">Explore the image</h2></div>
-      <p>Compare image structure with the areas that influenced the <strong>{{ result.name|lower }}</strong> classification.</p>
+      <p>{% if visuals %}Compare image structure with the areas that influenced the <strong>{{ result.name|lower }}</strong> classification.{% else %}The edge view highlights image structure; it does not locate an abnormality.{% endif %}</p>
     </div>
+    {% if visuals %}
     <div class="analysis-grid">
       <article class="analysis-card">
         <div class="analysis-card-top"><span>01</span><h3>Edge detection</h3></div>
@@ -66,6 +67,19 @@
     </div>
     <div class="focus-key" aria-label="Model focus color key"><span>Relative model influence</span><i aria-hidden="true"></i><span>Low</span><span>High</span></div>
     <p class="analysis-note"><strong>How to read these views:</strong> Focus is calculated on a {{ visuals.focus_resolution }} feature map and enlarged to fit the image. This classifier labels whole images; it was not trained to segment lesions. The contour may include artifacts or unrelated tissue.</p>
+    {% else %}
+    <div class="analysis-grid analysis-grid-lite">
+      <article class="analysis-card">
+        <div class="analysis-card-top"><span>01</span><h3>Edge detection</h3></div>
+        <div class="analysis-image"><img src="{{ edge_url }}" alt="Sobel edge map of the uploaded ultrasound image"></div>
+        <p>Sobel filtering highlights changes in brightness and texture.</p>
+      </article>
+      <article class="analysis-card">
+        <div class="analysis-card-top"><span>02</span><h3>What this view means</h3></div>
+        <p>This classifier scores the whole image. The edge view comes from image processing, not from the model, and it cannot identify a lesion or explain the predicted class.</p>
+      </article>
+    </div>
+    {% endif %}
   </section>
   {% endif %}
   <aside class="disclaimer" aria-label="Important medical notice"><span aria-hidden="true">!</span><p><strong>Research use only.</strong> This is not a medical diagnosis. The model can be wrong. A qualified healthcare professional should review medical images and advise on next steps.</p></aside>

@@ -4,6 +4,7 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile.free
+    autoDeployTrigger: commit
     healthCheckPath: /api/v1/health
     envVars:
       - key: API_KEY

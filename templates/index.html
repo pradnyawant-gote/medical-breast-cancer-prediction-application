@@ -15,7 +15,7 @@
     <p>Upload an image to see the model's prediction and review every category score.</p>
     <a class="orange-button" href="{{ url_for('predict') }}">Get started <span aria-hidden="true">↗</span></a>
   </div>
-  <div class="hero-caption"><span>FLASK × TENSORFLOW</span><span class="caption-rule"></span><span>MODEL3.H5</span></div>
+  <div class="hero-caption"><span>FLASK × {% if lite_mode %}LITERT{% else %}TENSORFLOW{% endif %}</span><span class="caption-rule"></span><span>{% if lite_mode %}MODEL_FREE.TFLITE{% else %}MODEL3.H5{% endif %}</span></div>
 </section>
 
 <section class="home-lower" aria-labelledby="home-lower-title">

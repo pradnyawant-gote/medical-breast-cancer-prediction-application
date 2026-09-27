@@ -19,8 +19,9 @@ MODEL_PATH = BASE_DIR / "model3.h5"
 CLASS_NAMES = ("Benign", "Malignant", "Normal")
 IMAGE_SIZE = (128, 128)
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_IMAGE_PIXELS = int(os.environ.get("MAX_IMAGE_PIXELS", "20000000"))
 
-Image.MAX_IMAGE_PIXELS = 20_000_000
+Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
@@ -30,7 +31,13 @@ ALLOWED_ORIGINS = {
     if origin.strip()
 }
 API_ONLY = os.environ.get("API_ONLY", "").lower() in {"1", "true", "yes"}
+LITE_MODE = os.environ.get("SONOLAB_RUNTIME", "").lower() == "litert"
 API_KEY = os.environ.get("API_KEY", "")
+
+
+@app.context_processor
+def template_runtime():
+    return {"lite_mode": LITE_MODE}
 
 
 @app.after_request
@@ -130,8 +137,8 @@ def classify_with_focus(batch):
     return np.asarray(scores.numpy()), np.asarray(focus.numpy())
 
 
-def analysis_images(preview, focus, show_region):
-    """Make Sobel edges, a LayerCAM overlay and a high-focus contour."""
+def edge_image(preview):
+    """Return a Sobel edge view without requiring model gradients."""
     gray = np.asarray(preview.convert("L").filter(ImageFilter.GaussianBlur(2)), dtype=np.float32)
     padded = np.pad(gray, 1, mode="edge")
     gx = (
@@ -147,7 +154,12 @@ def analysis_images(preview, focus, show_region):
     edge_strength = np.clip((edge_strength - low) / max(high - low, 1), 0, 1)
     edge_base = gray[..., None] * np.array([0.12, 0.19, 0.27], dtype=np.float32)
     edge_rgb = np.clip(edge_base + edge_strength[..., None] * [35, 210, 228], 0, 255).astype(np.uint8)
+    return png_data_url(Image.fromarray(edge_rgb))
 
+
+def analysis_images(preview, focus, show_region):
+    """Make Sobel edges, a LayerCAM overlay and a high-focus contour."""
+    edge_url = edge_image(preview)
     focus_image = Image.fromarray(np.uint8(np.clip(focus, 0, 1) * 255))
     focus_image = focus_image.resize(preview.size, Image.Resampling.BILINEAR)
     focus_image = focus_image.filter(ImageFilter.GaussianBlur(3))
@@ -185,7 +197,7 @@ def analysis_images(preview, focus, show_region):
         region_reason = "The model produced no positive class focus for this image."
 
     return {
-        "edges": png_data_url(Image.fromarray(edge_rgb)),
+        "edges": edge_url,
         "focus": png_data_url(Image.fromarray(overlay)),
         "region": region_url,
         "focus_available": bool(np.max(focus) > 1e-6),
@@ -341,16 +353,17 @@ def predict():
 
     try:
         batch, preview = prepare_image(upload)
-        probabilities, focus = predict_scores(batch, include_focus=True)
+        probabilities, focus = predict_scores(batch, include_focus=not LITE_MODE)
         results = [
             {"name": name, "percent": round(float(probability) * 100, 1)}
             for name, probability in zip(CLASS_NAMES, probabilities)
         ]
         best = results[int(np.argmax(probabilities))]
-        visuals = analysis_images(preview, focus, show_region=best["name"] != "Normal")
+        visuals = analysis_images(preview, focus, show_region=best["name"] != "Normal") if focus is not None else None
+        edge_url = edge_image(preview) if focus is None else None
         return render_template(
             "predict.html", page_name="predict", result=best, results=results,
-            preview_url=png_data_url(preview), visuals=visuals,
+            preview_url=png_data_url(preview), visuals=visuals, edge_url=edge_url,
         )
     except ValueError as exc:
         return render_template("predict.html", page_name="predict", error=str(exc)), 400

@@ -54,20 +54,21 @@ Test the deployed API at `http://localhost:8000/api/v1/health` and send a PNG or
 
 For a public API, set `API_KEY` as a secret environment variable. Prediction requests must then include the same value in an `X-API-Key` header; health checks remain public. Without `API_KEY`, the prediction route is open. Browser clients on another origin also need that origin in `CORS_ORIGINS`.
 
-## Deploy the API on Render
+## Deploy the website and API on Render Free
 
-The included `render.yaml` uses Render's **Free** web service plan, `Dockerfile.free`, and `/api/v1/health`. The original TensorFlow container exceeded Free's 512 MB memory limit when measured locally, so this deployment runs an approximately 80 MB float16 LiteRT copy of the same model. The Free container does not include TensorFlow or the website. It serves the JSON API at `/`, `/api/v1`, `/api/v1/health`, and `/api/v1/predict`. Class scores keep the same response shape, but `include_visuals=true` returns a 400 error because LayerCAM needs TensorFlow gradients.
+The included `render.yaml` uses Render's **Free** web service plan, `Dockerfile.free`, and `/api/v1/health`. The original TensorFlow container exceeded Free's 512 MB memory limit when measured locally, so this deployment runs an approximately 80 MB float16 LiteRT copy of the same model. One Render service now serves the website at `/` and `/predict` and the JSON API at `/api/v1`, `/api/v1/health`, and `/api/v1/predict`. The website posts images to the server on the same origin, so its visitors do not need the API key. Direct JSON prediction requests still require `X-API-Key` when `API_KEY` is configured.
+
+The Render Free website shows the uploaded image, all three class scores, and a Sobel edge view. It accepts PNG/JPEG uploads up to 10 MB and 8 megapixels to stay within the memory limit. It does not show the TensorFlow LayerCAM focus or contour because the lightweight runtime cannot compute model gradients; `include_visuals=true` on the JSON API returns a 400 error. Edge detection is image processing, not lesion localization. The full TensorFlow website remains available through the regular `Dockerfile` on a host with more memory.
 
 Commit `model_free.tflite` as a regular Git file so Render receives the actual model without depending on Git LFS during its build. The original `model3.h5` remains in Git LFS for the full website/API container. To regenerate and check the smaller model locally, run `python convert_model_free.py` and `python verify_model_free.py` in an environment with TensorFlow installed. The conversion check compares the two models on 10 deterministic inputs; it is not a clinical accuracy test.
 
-1. Commit and push the changes in this folder, including `model_free.tflite`, to your GitHub repository. The converted model is about 80 MB, so expect a large Git push.
-2. Sign in to [Render](https://dashboard.render.com/), connect your GitHub account, choose **New → Blueprint**, and select this repository's `main` branch.
-3. Check that the proposed `sonolab-api` service says **Free** and uses `Dockerfile.free`. Add a long random `API_KEY` when prompted, then create the service. Keep that key out of Git.
-4. After deployment, open `https://<your-service>.onrender.com/api/v1/health`. To predict, send a PNG or JPEG as the multipart field `image` and include `X-API-Key`:
+The `sonolab-api` Blueprint has already been created. Commit and push these changes to its linked `main` branch; Render will rebuild that same service. Do not create a second Blueprint or web service. After its deploy shows **Live**, open `https://sonolab-api.onrender.com/` for the website, `https://sonolab-api.onrender.com/predict` for the upload page, and `https://sonolab-api.onrender.com/api/v1/health` for the health check.
 
-   ```sh
-   curl -H "X-API-Key: YOUR_KEY" -F "image=@sample.png" https://<your-service>.onrender.com/api/v1/predict
-   ```
+For direct API calls, send a PNG or JPEG as the multipart field `image` and include `X-API-Key`:
+
+```sh
+curl -H "X-API-Key: YOUR_KEY" -F "image=@sample.png" https://sonolab-api.onrender.com/api/v1/predict
+```
 
 Free instances have 0.1 CPU and 512 MB RAM, spin down after 15 minutes idle, and may take about a minute to wake. Predictions can therefore be slow. This is a research demo and is not a medical diagnostic service.
 

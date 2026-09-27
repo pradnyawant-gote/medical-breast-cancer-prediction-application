@@ -3,3 +3,7 @@
 !serve_free.py
 !requirements.free.txt
 !model_free.tflite
+!templates/
+!templates/**
+!static/
+!static/**
