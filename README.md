@@ -40,6 +40,31 @@ Errors use `{"error":{"code":"...","message":"..."}}`, with 400 for a missing or
 
 By default browser calls from another origin are blocked. If the frontend is hosted separately, set `CORS_ORIGINS` to a comma-separated list of exact origins such as `https://example.com`. The website and API on the same host need no CORS setting.
 
+## Deploy the model as an API
+
+Use `Dockerfile.api` when you want to deploy the model without the website. Its `/` and `/api/v1` routes return JSON endpoint information, and its prediction route is the same one documented above. The model loads before the server starts accepting requests.
+
+```sh
+git lfs pull
+docker build -f Dockerfile.api -t sonolab-api .
+docker run --rm -p 8000:8000 sonolab-api
+```
+
+Test the deployed API at `http://localhost:8000/api/v1/health` and send a PNG or JPEG with `curl -F "image=@sample.png" http://localhost:8000/api/v1/predict`. For a VPS, run the container with `--restart unless-stopped` and put an HTTPS reverse proxy in front of port 8000. Container platforms can set `PORT` and probe `/api/v1/health`.
+
+For a public API, set `API_KEY` as a secret environment variable. Prediction requests must then include the same value in an `X-API-Key` header; health checks remain public. Without `API_KEY`, the prediction route is open. Browser clients on another origin also need that origin in `CORS_ORIGINS`.
+
+## Deploy the API on Render
+
+The included `render.yaml` selects `Dockerfile.api`, sets the health check to `/api/v1/health`, and asks you for an `API_KEY` in the Render Dashboard. It selects Render's **paid 2 GB web service plan** (`1c-2g`): the model container used about 589 MiB while idle locally, which already exceeds the 512 MB Free plan. Review Render's current price before creating the service.
+
+1. Commit and push `app.py`, `Dockerfile.api`, `render.yaml`, `README.md`, and `tests/test_api.py` to the GitHub repository. The model is tracked with Git LFS; verify that GitHub has the real `model3.h5` object.
+2. In the Render Dashboard, connect your GitHub account, choose **New → Blueprint**, select this repository and its `main` branch, then review the proposed `sonolab-api` web service and paid plan.
+3. Enter a long random value for `API_KEY` when Render prompts you, then approve creation. Do not put the key in Git.
+4. Wait for the deploy to become healthy. Visit `https://<your-service>.onrender.com/api/v1/health`, then send a PNG/JPEG to `https://<your-service>.onrender.com/api/v1/predict` with multipart field `image` and header `X-API-Key`.
+
+If the build reports that `model3.h5` is missing or cannot be opened, check that Render's Git checkout obtained the 483 MB Git LFS object rather than its small pointer file. The API is a research demo and is not a medical diagnostic service.
+
 ## Deployment
 
 The included Dockerfile runs the Flask application with Waitress, a production WSGI server. The same `serve.py` entry point runs on Windows or Linux. It listens on the `PORT` environment variable (default 8000) and uses one process so the large model is loaded once.

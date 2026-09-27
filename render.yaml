@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: sonolab-api
+    runtime: docker
+    plan: 1c-2g
+    dockerfilePath: ./Dockerfile.api
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: API_KEY
+        sync: false

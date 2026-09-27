@@ -1,6 +1,7 @@
 """Flask interface for the ultrasound classifier saved in model3.h5."""
 
 import base64
+import hmac
 import io
 import logging
 import os
@@ -28,6 +29,8 @@ ALLOWED_ORIGINS = {
     for origin in os.environ.get("CORS_ORIGINS", "").split(",")
     if origin.strip()
 }
+API_ONLY = os.environ.get("API_ONLY", "").lower() in {"1", "true", "yes"}
+API_KEY = os.environ.get("API_KEY", "")
 
 
 @app.after_request
@@ -37,7 +40,7 @@ def add_api_cors(response):
     if request.path.startswith("/api/") and origin in ALLOWED_ORIGINS:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, X-API-Key"
         response.headers.add("Vary", "Origin")
     return response
 
@@ -208,6 +211,37 @@ def predict_scores(batch, include_focus=False):
 
 def api_error(code, message, status):
     return jsonify({"error": {"code": code, "message": message}}), status
+
+
+def api_description():
+    return {
+        "service": "SonoLab API",
+        "version": "v1",
+        "endpoints": {
+            "health": "GET /api/v1/health",
+            "predict": "POST /api/v1/predict",
+        },
+        "upload": "Send a PNG or JPEG as multipart/form-data in the image field.",
+        "notice": "Research use only. This is not a medical diagnosis.",
+    }
+
+
+@app.before_request
+def api_deployment_mode():
+    if API_ONLY:
+        if request.path == "/":
+            return jsonify(api_description())
+        if not request.path.startswith("/api/"):
+            return api_error("not_found", "This deployment serves only the JSON API.", 404)
+    if API_KEY and request.path == "/api/v1/predict" and request.method == "POST":
+        supplied_key = request.headers.get("X-API-Key", "")
+        if not hmac.compare_digest(supplied_key, API_KEY):
+            return api_error("unauthorized", "A valid X-API-Key header is required.", 401)
+
+
+@app.get("/api/v1")
+def api_index():
+    return jsonify(api_description())
 
 
 @app.get("/api/v1/health")

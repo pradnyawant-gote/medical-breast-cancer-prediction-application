@@ -100,12 +100,36 @@ class ApiTests(unittest.TestCase):
                 "/api/v1/predict", headers={"Origin": allowed}
             )
             self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), allowed)
+            self.assertIn("X-API-Key", response.headers.get("Access-Control-Allow-Headers"))
             response = self.client.options(
                 "/api/v1/predict", headers={"Origin": "https://other.test"}
             )
             self.assertIsNone(response.headers.get("Access-Control-Allow-Origin"))
         finally:
             ALLOWED_ORIGINS.remove(allowed)
+
+    def test_api_only_mode_hides_website_routes(self):
+        with patch("app.API_ONLY", True):
+            self.assertEqual(self.client.get("/").json["service"], "SonoLab API")
+            self.assertEqual(self.client.get("/api/v1").json["version"], "v1")
+            response = self.client.get("/predict")
+            self.assertEqual(response.status_code, 404)
+            self.assertEqual(response.json["error"]["code"], "not_found")
+
+    def test_optional_api_key(self):
+        with patch("app.API_KEY", "test-secret"):
+            response = self.client.post(
+                "/api/v1/predict", data={"image": (sample_png(), "scan.png")}
+            )
+            self.assertEqual(response.status_code, 401)
+            self.assertEqual(response.json["error"]["code"], "unauthorized")
+            with patch("app.predict_scores", return_value=(np.array([0.1, 0.2, 0.7]), None)):
+                response = self.client.post(
+                    "/api/v1/predict",
+                    headers={"X-API-Key": "test-secret"},
+                    data={"image": (sample_png(), "scan.png")},
+                )
+            self.assertEqual(response.status_code, 200)
 
 
 if __name__ == "__main__":
